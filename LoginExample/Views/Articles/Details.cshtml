@@ -1,0 +1,29 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@model LoginExample.Models.Article;
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<h2>@Model.Title</h2>
+<p>
+    Create ad:
+    @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC
+</p>
+
+<hr />
+<div style="white-space: pre-wrap">@Model.Content</div>
+
+<hr />
+
+<a asp-controller="Articles" asp-action="Index">Back to Articles</a>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <a asp-controller="Articles"
+    asp-action="Edit"
+    asp-route-id="@Model.Id">Edit Article</a>
+}

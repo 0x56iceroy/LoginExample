@@ -1,0 +1,41 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@model IEnumerable<LoginExample.Models.Article>
+
+@{
+    ViewData["Title"] = "Articles";
+}
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <a asp-controller="Articles"
+    asp-action="Create"
+    class="btn btn-primary">Create Article</a>
+}
+@if (!Model.Any())
+{
+    <p>No articles found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Created At (UTC)</th>
+            </tr>
+            <tbody>
+                @foreach (var article in Model)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Articles" asp-action="Details" asp-route-id="@article.Id">@article.Title</a>
+                        </td>
+                        <td>@article.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </thead>
+    </table>
+}

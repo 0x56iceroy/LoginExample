@@ -1,0 +1,31 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model LoginExample.ViewModels.ArticleCreateViewModel;
+@{
+    ViewData["Title"] = "Create Article";
+}
+
+<h2>Create Article</h2>
+<form asp-controller="Articles" asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <div>
+        <label asp-for="Title"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title"></span>
+    </div>
+    <div>
+        <label asp-for="Content"></label>
+        <textarea asp-for="Content"
+        class="form-control"
+        rows="8"></textarea>
+        <span asp-validation-for="Content"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a asp-action="Index">Back to Articles</a>
+
+    @section scripts {
+        <partial name="_ValidationScriptsPartial"/>
+    }
+</form>
