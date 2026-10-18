@@ -5,18 +5,12 @@ using LoginExample.Models;
 using LoginExample.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using System.Security.Cryptography.X509Certificates;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
+//using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
 namespace LoginExample.Controllers
 {
     public class ArticlesController : Controller
     {
-        //public IActionResult Index()
-        //{
-        //    return View();
-        //}
-
         private readonly ApplicationDbContext _context;
 
         public ArticlesController(ApplicationDbContext context)
@@ -205,6 +199,54 @@ namespace LoginExample.Controllers
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> Archived()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var articles = await _context.Articles
+                .AsNoTracking()
+                .Where(a =>
+                    a.AuthorId == currentUserId &&
+                    a.Status == ArticlesStatus.Archived)
+                .OrderByDescending(a => a.ArchivedAt)
+                .ToListAsync();
+
+            return View(articles);
+        }
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var article = await _context.Articles
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (article is null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (article.AuthorId != currentUserId)
+                return Forbid();
+
+            if (article.Status != ArticlesStatus.Archived)
+            {
+                return BadRequest("Only archived articles can be restored.");
+            }
+
+            DateTime now = DateTime.UtcNow;
+
+            article.Status = ArticlesStatus.Published;
+            article.ArchivedAt = null;
+            article.UpdatedAt = now;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Archived));
         }
     }
 }
