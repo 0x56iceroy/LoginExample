@@ -13,6 +13,10 @@
     asp-action="Create"
     class="btn btn-primary">Create Article</a>
 }
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <a asp-controller="Articles" asp-action="Archived" class="btn btn-secondary">My Archived Articles</a>
+}
 @if (!Model.Any())
 {
     <p>No articles found.</p>

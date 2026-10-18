@@ -1,0 +1,49 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model IEnumerable<LoginExample.Models.Article>;
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+@{
+    ViewData["Title"] = "Archived Articles";
+}
+<h2>Archived Articles</h2>
+
+@if (!Model.Any())
+{
+    <p>No archived articles found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Archived At (UTC)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var article in Model)
+            {
+             <tr>
+                    <td>@article.Title</td>
+                    <td>@article.ArchivedAt</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@article.Id"
+                        class="btn btn-info">View</a>
+
+                        <form asp-controller="Articles"
+                            asp-action="Restore" asp-route-id="@article.Id" 
+                            method="post" class="d-inline">
+                            <button type="submit" class="btn btn-success">Restore</button>
+                            <a asp-controller="Articles" asp-action="Delete" asp-route-id="@article.Id" class="btn btn-danger">Delete</a>
+                        </form>
+                    </td>
+                </tr>            
+            }
+        </tbody>
+    </table>
+}
+<a asp-action="Index">Back to Articles</a>

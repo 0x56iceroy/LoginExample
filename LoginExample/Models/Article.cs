@@ -18,5 +18,8 @@ namespace LoginExample.Models
 
         [Required]
         public string AuthorId { get; set; } = string.Empty;
+
+        public ArticlesStatus Status { get; set; } = ArticlesStatus.Published;
+        public DateTime? ArchivedAt { get; set; }
     }
 }

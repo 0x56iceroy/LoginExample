@@ -3,7 +3,8 @@
 *@
 
 @model LoginExample.Models.Article;
-
+@using System.Security.Claims
+@using LoginExample.Models
 @{
     ViewData["Title"] = Model.Title;
 }
@@ -26,4 +27,9 @@
     <a asp-controller="Articles"
     asp-action="Edit"
     asp-route-id="@Model.Id">Edit Article</a>
+}
+@if (Model.AuthorId == User.FindFirstValue(ClaimTypes.NameIdentifier)
+&& Model.Status == ArticlesStatus.Published)
+{
+    <a asp-action="Archive" asp-route-id="@Model.Id" class="btn btn-warning">Archive</a>
 }
