@@ -1,0 +1,25 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model LoginExample.Models.Article
+@{
+    ViewData["Title"] = "Delete Article";
+}
+
+<h2>Delete Article</h2>
+<div class="alert alert-danger">
+    <strong>Warning:</strong>
+    This action permanently deletes the article.
+    It cannot be restored.
+</div>
+
+<h4>@Model.Title</h4>
+<p>Ary you sure you want to permanently delete this article?</p>
+
+<form asp-controller="Articles"
+    asp-action="Delete"
+    asp-route-id="@Model.Id"
+    method="post">
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Archived" class="btn btn-secondary">Cancel</a>
+</form>

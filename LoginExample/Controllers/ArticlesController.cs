@@ -248,5 +248,58 @@ namespace LoginExample.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Archived));
         }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var article = await _context.Articles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (article is null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (article.AuthorId != currentUserId)
+                return Forbid();
+
+            if (article.Status != ArticlesStatus.Archived)
+            {
+                return BadRequest("Only archived articles can be delete.");
+            }
+
+            return View(article);
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var article = await _context.Articles
+                .FirstOrDefaultAsync(a => a.Id == id);
+            if (article is null)
+                return NotFound();
+            
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (article.AuthorId != currentUserId)
+                return Forbid();
+
+            if (article.Status != ArticlesStatus.Archived)
+                return BadRequest("Only archived articles can be deleted.");
+
+            _context.Articles.Remove(article);
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Archived));
+
+        }
     }
 }

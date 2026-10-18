@@ -38,6 +38,7 @@ else
                             asp-action="Restore" asp-route-id="@article.Id" 
                             method="post" class="d-inline">
                             <button type="submit" class="btn btn-success">Restore</button>
+                            <a asp-controller="Articles" asp-action="Delete" asp-route-id="@article.Id" class="btn btn-danger">Delete</a>
                         </form>
                     </td>
                 </tr>            
