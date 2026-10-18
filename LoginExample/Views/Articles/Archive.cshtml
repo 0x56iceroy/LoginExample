@@ -1,0 +1,25 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model LoginExample.Models.Article
+@{
+    ViewData["Title"] = "Archive Article";
+}
+
+<h2>Archive Article</h2>
+<p>Are you sure you want to archive this article?</p>
+<h4>@Model.Title</h4>
+
+<p>
+    After archiving, this article will no longer
+    be publicly visible or editable.
+</p>
+
+<form asp-controller ="Articles" asp-action="Archive" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-warning">
+        Confirm Archive
+    </button>
+    <a asp-action="Details" asp-route-id="@Model.Id"
+    class ="btn btn-secondary">Cancel</a>
+</form>

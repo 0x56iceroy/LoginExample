@@ -28,6 +28,7 @@ namespace LoginExample.Controllers
         public async Task<IActionResult> Index()
         {
             var articles = await _context.Articles
+                .Where(a => a.Status == ArticlesStatus.Published)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
 
@@ -108,6 +109,9 @@ namespace LoginExample.Controllers
                 return Forbid();
             }
 
+            if (article.Status != ArticlesStatus.Published)
+                return BadRequest("Archived articles cannot be edit.");
+
             var model = new ArticleEditViewModel
             {
                 Title = article.Title,
@@ -140,6 +144,9 @@ namespace LoginExample.Controllers
                 return Forbid();
             }
 
+            if (article.Status != ArticlesStatus.Published)
+                return BadRequest("Archived articles cannot be edit.");
+
             article.Title = model.Title;
             article.Content = model.Content;
             article.UpdatedAt = DateTime.UtcNow;
@@ -147,6 +154,57 @@ namespace LoginExample.Controllers
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Details), new { id = article.Id });
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> Archive(int id)
+        {
+            var article = await _context.Articles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id);
+            if (article is null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (article.AuthorId != currentUserId)
+                return Forbid();
+
+            if (article.Status != ArticlesStatus.Published)
+                return BadRequest("Article is already archived.");
+
+            return View(article);
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [ActionName("Archive")]
+        public async Task<IActionResult> ArchiveConfirmed(int id)
+        {
+            var article = await _context.Articles
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (article is null)
+                return NotFound();
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (article.AuthorId != currentUserId)
+                return Forbid();
+
+            if (article.Status != ArticlesStatus.Published)
+                return BadRequest("Only published articles can be archived.");
+
+            article.Status = ArticlesStatus.Archived;
+            article.ArchivedAt = DateTime.UtcNow;
+            article.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
     }
 }
