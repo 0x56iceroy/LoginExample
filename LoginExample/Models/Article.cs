@@ -21,5 +21,8 @@ namespace LoginExample.Models
 
         public ArticlesStatus Status { get; set; } = ArticlesStatus.Published;
         public DateTime? ArchivedAt { get; set; }
+
+        public int CategoryId { get; set; }
+        public Category Category { get; set; } = null!;
     }
 }

@@ -163,5 +163,25 @@ namespace LoginExample.Controllers
             var result = await query.ToListAsync();
             return Json(result);
         }
+
+        public async Task<IActionResult> linq9()
+        {
+            var u = _context.Users
+                .Where(u => u.EmailConfirmed == true)
+                .Select(u => u.Id);
+
+            var a = _context.Articles
+                .Where(a => u.Contains(a.AuthorId))
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Title,
+                    a.AuthorId
+                });
+
+            string sql = a.ToQueryString();
+            var result = await a.ToListAsync();
+            return Json(result);
+        }
     }
 }

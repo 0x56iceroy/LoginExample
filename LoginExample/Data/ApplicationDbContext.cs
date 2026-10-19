@@ -12,5 +12,18 @@ namespace LoginExample.Data
         }
 
         public DbSet<Article> Articles => Set<Article>();
+        public DbSet<Category> Categories => Set<Category>();
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            builder.Entity<Article>()
+                .HasOne(a => a.Category)
+                .WithMany(c => c.Articles)
+                .HasForeignKey(a => a.CategoryId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.NoAction);
+        }
     }
 }
