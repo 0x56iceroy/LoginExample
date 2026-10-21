@@ -1,8 +1,8 @@
 using LoginExample.Data;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 
 namespace LoginExample
 {
@@ -16,6 +16,24 @@ namespace LoginExample
             //builder.Services.AddControllersWithViews();
 
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection not found.");
+
+            if (builder.Environment.IsEnvironment("Testing"))
+            {
+                var sqlConnection = new SqlConnectionStringBuilder(connectionString);
+
+                if (!string.Equals(sqlConnection.InitialCatalog,
+                    "LoginExample_TestDb",
+                    StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(sqlConnection.DataSource,@"(localdb)\MSSQLLocalDB",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"Testing 資料庫設定不正確。" +
+                        $" Server={sqlConnection.DataSource};" +
+                        $" Database={sqlConnection.InitialCatalog}");
+                }
+            }
+
             builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
 
             builder.Services
@@ -42,7 +60,7 @@ namespace LoginExample
                 var roleManager = scope.ServiceProvider
                     .GetRequiredService<RoleManager<IdentityRole>>();
 
-                if(!await roleManager.RoleExistsAsync("Admin"))
+                if (!await roleManager.RoleExistsAsync("Admin"))
                 {
                     var result = await roleManager.CreateAsync(
                         new IdentityRole("Admin"));
@@ -54,18 +72,18 @@ namespace LoginExample
                 }
 
                 var adminEmail = builder.Configuration["SeedAdmin:Email"];
-                if(!string.IsNullOrWhiteSpace(adminEmail))
+                if (!string.IsNullOrWhiteSpace(adminEmail))
                 {
                     var userManager = scope.ServiceProvider
                         .GetRequiredService<UserManager<IdentityUser>>();
 
                     var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
-                    if(adminUser is null)
+                    if (adminUser is null)
                     {
                         throw new InvalidOperationException("找不到指定的管理員測試帳號。");
                     }
-                    if(!await userManager.IsInRoleAsync(adminUser, "Admin"))
+                    if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
                     {
                         var result = await userManager.AddToRoleAsync(adminUser, "Admin");
                         if (!result.Succeeded)
@@ -98,6 +116,7 @@ namespace LoginExample
                 .WithStaticAssets();
 
             app.Run();
+
         }
     }
 }
