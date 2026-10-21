@@ -13,6 +13,14 @@
     <div>
         <label asp-for="Title"></label>
         <input asp-for="Title" class="form-control" />
+        <div class="mb-3">
+            <label asp-for="CategoryId" class="form-label">
+                文章分類
+            </label>
+            <select asp-for="CategoryId" asp-items="Model.Categories"
+            class="form-select"></select>
+            <span asp-validation-for="CategoryId" class="text-danger"></span>
+        </div>
         <span asp-validation-for="Title"></span>
     </div>
     <div>

@@ -24,6 +24,10 @@ namespace LoginExample.Data
                 .HasForeignKey(a => a.CategoryId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<Category>()
+                .HasIndex(c => c.Name)
+                .IsUnique();
         }
     }
 }

@@ -1,0 +1,27 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model LoginExample.ViewModels.CategoryEditViewModel
+@{
+    ViewData["Title"] = "編輯分類";
+}
+<h1>編輯分類</h1>
+<form asp-controller="Categories" asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3">
+        <label asp-for="Name" clas="form-label">
+            分類名稱
+        </label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">儲存修改</button>
+    <a asp-controller="Categories" asp-action="Index" class="btn btn-secondary">返回分類列表</a>
+</form>
+
+@* @section Scripts{
+    <partial name="_ValidationScriptPartial"
+} *@

@@ -1,0 +1,28 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model LoginExample.ViewModels.CategoryIndexViewModel;
+@{
+    ViewData["Title"] = "刪除分類";
+}
+
+<h1>刪除分類</h1>
+<div class="alert alert-warning">
+    確定要刪除「@Model.Name」嗎？<br />
+    此分類下的 @Model.ArticleCount 篇文章將移至「未分類」。<br />
+    文章本身不會被刪除。
+</div>
+
+<dl class="row">
+    <dt class="col-sm-3">分類名稱</dt>
+    <dd class="col-sm-9">@Model.Name</dd>
+
+    <dt class="col-sm-3">文章數量</dt>
+    <dd class="col-sm-9">@Model.ArticleCount</dd>
+</dl>
+
+<form asp-controller="Categoreis" asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-danger">確認刪除</button>
+    <a asp-controller="Categories" asp-action="Index" class="btn btn-secondary">取消</a>
+</form>

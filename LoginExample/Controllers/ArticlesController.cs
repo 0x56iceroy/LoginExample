@@ -5,6 +5,7 @@ using LoginExample.Models;
 using LoginExample.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc.Rendering;
 //using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 
 namespace LoginExample.Controllers
@@ -31,9 +32,13 @@ namespace LoginExample.Controllers
 
         [Authorize]
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            return View(new ArticleCreateViewModel());
+            var model = new ArticleCreateViewModel();
+
+            await LoadCategoriesAsync(model);
+
+            return View(model);
         }
 
 
@@ -45,8 +50,22 @@ namespace LoginExample.Controllers
         {
             if (!ModelState.IsValid)
             {
+                await LoadCategoriesAsync(model);
                 return View(model);
             }
+
+            bool categoryExists = await _context.Categories
+                .AnyAsync(c => c.Id == model.CategoryId);
+
+            if (!categoryExists)
+            {
+                ModelState.AddModelError(
+                    nameof(model.CategoryId),
+                    "指定的文章分類不存在");
+                await LoadCategoriesAsync(model);
+                return View(model);
+            }
+
             var authorId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (authorId is null)
@@ -60,7 +79,8 @@ namespace LoginExample.Controllers
                 Title = model.Title,
                 Content = model.Content,
                 AuthorId = authorId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                CategoryId = model.CategoryId,
             };
 
             _context.Articles.Add(article);
@@ -300,6 +320,19 @@ namespace LoginExample.Controllers
 
             return RedirectToAction(nameof(Archived));
 
+        }
+
+        private async Task LoadCategoriesAsync(ArticleCreateViewModel model)
+        {
+            model.Categories = await _context.Categories
+                .AsNoTracking()
+                .OrderBy(c => c.Name)
+                .Select(c => new SelectListItem
+                {
+                    Value = c.Id.ToString(),
+                    Text = c.Name
+                })
+                .ToListAsync();
         }
     }
 }

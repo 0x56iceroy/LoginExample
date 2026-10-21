@@ -1,0 +1,54 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@model LoginExample.ViewModels.CategoryManagementViewModel
+@{
+    ViewData["Title"] = "分類管理";
+}
+<h1>分類管理</h1>
+<h3>新增分類</h3>
+
+@if (User.IsInRole("Admin"))
+{
+    <form asp-controller="Categories" asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summery="ModelOnly" class ="text-danger"></div>
+        <div class="mb-3">
+            <label asp-for="Create.Name" class="form-label">
+                分類名稱
+            </label>
+            <input asp-for="Create.Name" class="form-control"/>
+            <span asp-validation-for="Create.Name" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            新增分類
+        </button>
+    </form>
+}
+
+<hr />
+
+<h3>現有分類</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>分類 ID</th>
+            <th>分類名稱</th>
+            <th>文章數量</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var category in Model.Categories)
+        {
+            <tr>
+                <td>@category.Id</td>
+                <td>@category.Name</td>
+                <td>@category.ArticleCount</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@* @section Srcipte {
+    <partial nema="_ValidationScriptsPartial"
+} *@

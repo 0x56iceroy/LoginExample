@@ -2,12 +2,13 @@ using LoginExample.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace LoginExample
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,47 @@ namespace LoginExample
             });
 
             var app = builder.Build();
+
+            if (app.Environment.IsDevelopment())
+            {
+                using var scope = app.Services.CreateScope();
+
+                var roleManager = scope.ServiceProvider
+                    .GetRequiredService<RoleManager<IdentityRole>>();
+
+                if(!await roleManager.RoleExistsAsync("Admin"))
+                {
+                    var result = await roleManager.CreateAsync(
+                        new IdentityRole("Admin"));
+                    if (!result.Succeeded)
+                    {
+                        throw new InvalidOperationException(
+                            string.Join("; ", result.Errors.Select(e => e.Description)));
+                    }
+                }
+
+                var adminEmail = builder.Configuration["SeedAdmin:Email"];
+                if(!string.IsNullOrWhiteSpace(adminEmail))
+                {
+                    var userManager = scope.ServiceProvider
+                        .GetRequiredService<UserManager<IdentityUser>>();
+
+                    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+                    if(adminUser is null)
+                    {
+                        throw new InvalidOperationException("找不到指定的管理員測試帳號。");
+                    }
+                    if(!await userManager.IsInRoleAsync(adminUser, "Admin"))
+                    {
+                        var result = await userManager.AddToRoleAsync(adminUser, "Admin");
+                        if (!result.Succeeded)
+                        {
+                            throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+                        }
+                    }
+                }
+            }
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
