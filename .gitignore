@@ -361,3 +361,52 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+
+# Production secrets
+appsettings.Production.json
+.env
+.env.*
+!.env.example
+
+# Private deployment credentials
+*.pem
+*.key
+
+# Deployment backups
+*.bak
+*.tar.gz
+
+
+# ==========================================
+# LoginExample - Security & Local Files
+# ==========================================
+
+# Production and local configuration
+appsettings.Production.json
+appsettings.Local.json
+appsettings.*.Local.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Credentials
+.secrets/
+secrets/
+*.pem
+*.key
+*.p12
+*.p8
+*.p7b
+
+# Database exports and deployment backups
+*.bak
+*.bacpac
+*.bacpac.tmp
+*.tar
+*.tar.gz
+
+# Generated EF Core migration scripts
+/LoginExample/*.sql
