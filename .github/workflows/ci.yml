@@ -68,3 +68,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Failed to apply database migrations."
           }
+      - name: Run integration tests
+        shell: pwsh
+        env:
+          ASPNETCORE_ENVIRONMENT: Testing
+          DOTNET_ENVIRONMENT: Testing
+        run: |
+          dotnet test LoginExample.Tests/LoginExample.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --logger "console;verbosity=normal"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Integration tests failed."
+          }
