@@ -82,3 +82,55 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Integration tests failed."
           }
+
+      - name: Publish deployment artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: dotnet publish ./LoginExample/LoginExample.csproj -c Release --no-restore -p:UseAppHost=false -o ./artifacts/linux-publish
+
+      - name: Remove non-production settings
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        shell: pwsh
+        run: |
+          $dir = "./artifacts/linux-publish"
+
+          Remove-Item "$dir/appsettings.Development.json" -Force -ErrorAction SilentlyContinue
+          Remove-Item "$dir/appsettings.Testing.json" -Force -ErrorAction SilentlyContinue
+
+          Write-Host "Non-production configuration files removed."
+
+      - name: Verify deployment artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        shell: pwsh
+        run: |
+          $dir = "./artifacts/linux-publish"
+
+          if (-not (Test-Path "$dir/LoginExample.dll")) {
+            throw "LoginExample.dll is missing."
+          }
+
+          if (Test-Path "$dir/appsettings.Production.json") {
+            throw "Production configuration must not be included."
+          }
+
+          if (Test-Path "$dir/publish") {
+            throw "Unexpected nested publish directory."
+          }
+
+          if (Test-Path "$dir/appsettings.Development.json") {
+            throw "Development configuration must not be included."
+          }
+
+          if (Test-Path "$dir/appsettings.Testing.json") {
+            throw "Testing configuration must not be included."
+          }
+
+          Write-Host "Deployment artifact verified."
+
+      - name: Upload deployment artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v7
+        with:
+          name: loginexample-linux-${{ github.sha }}
+          path: ./artifacts/linux-publish/
+          if-no-files-found: error
+          retention-days: 7
