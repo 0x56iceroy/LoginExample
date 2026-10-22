@@ -20,6 +20,7 @@ The project is developed incrementally, with an emphasis on application behavior
 | Authorization | Role-based and resource ownership authorization |
 | Frontend | Razor Views, Bootstrap |
 | Testing | xUnit, ASP.NET Core Integration Testing |
+| Continuous Integration | GitHub Actions (Windows runner, .NET 10, SQL Server LocalDB) |
 | Version Control | Git |
 | Development Environment | Windows, SQL Server Express LocalDB |
 | Deployment Environment | Ubuntu 26.04.1 VM, .NET 10 runtime, SQL Server 2025 |
@@ -153,7 +154,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5000/Articles
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/Articles
 ```
 
-The current workflow is **manual**; it is not a CI/CD pipeline. Refer to the SOP for the ordered commands and backup/rollback instructions, rather than using this summary as an executable script.
+Application deployment to the Ubuntu VM is currently **manual**. Continuous integration is automated separately with GitHub Actions, but continuous deployment (CD) has not been implemented. Refer to the SOP for ordered deployment commands and backup/rollback instructions, rather than using this summary as an executable script.
 
 ## Getting Started
 
@@ -289,7 +290,7 @@ Entity Framework Core tracks applied migrations in the `__EFMigrationsHistory` d
 
 Running `dotnet ef database update` applies any migrations that have not yet been applied to the configured database.
 
-> **Known migration issue:** The `AddArticleCategory` migration currently contains a SQL update that can fail with `Invalid column name CategoryId` when applied to a fresh SQL Server database. The Ubuntu demo database was initialized using a manually corrected SQL script. The original C# migration needs to be fixed and re-tested before treating fresh database setup as fully reproducible. Do not apply the existing migration chain blindly against an important database.
+> **Migration fix verified:** `AddArticleCategory` was updated to execute its existing-article backfill with deferred SQL compilation (`EXEC(N'...')`), resolving the SQL Server `Invalid column name 'CategoryId'` batch issue. All six migrations were verified against a fresh LocalDB database. A separate upgrade test began with the first three migrations and an existing article, then applied the remaining migrations; the article was preserved and assigned to the reserved `未分類` category (`CategoryId = 1`). These checks used isolated verification databases, not the Ubuntu demo database.
 
 ### 5. Run the Application
 
@@ -394,6 +395,22 @@ Before running integration tests, verify that their configuration points to the 
 
 The test infrastructure and any required test database initialization must be available for the tests to run successfully.
 
+## Continuous Integration
+
+This repository uses [GitHub Actions](.github/workflows/ci.yml) to run **CI automatically on pushes to `master` and pull requests targeting `master`**. The workflow has completed successfully on a GitHub-hosted Windows runner.
+
+The workflow performs the following steps:
+
+1. Check out the repository and configure the .NET 10 SDK.
+2. Restore NuGet dependencies and build the application and test projects in Release mode.
+3. Start the runner's SQL Server Express LocalDB `MSSQLLocalDB` instance.
+4. Initialize the isolated `LoginExample_TestDb` database by applying the EF Core migrations in the `Testing` environment.
+5. Run the xUnit integration tests against that database using `dotnet test`.
+
+The tests cover selected HTTP authorization, anti-forgery, category management, article reassignment, and transaction rollback scenarios. The Testing configuration enforces the expected `(localdb)\MSSQLLocalDB` instance and `LoginExample_TestDb` database name to reduce the risk of accidentally using the development database.
+
+**CI status:** The Restore → Build → LocalDB → Migrations → Tests workflow has been successfully executed on GitHub Actions. **Continuous deployment (CD) is not configured:** publishing and copying the application to the private Ubuntu VM remain manual operations documented in the [deployment SOP](DevOps/LoginExample_Ubuntu_部署與再部署_SOP.md). The VM is not exposed to GitHub-hosted runners for deployment.
+
 ## Security Considerations
 
 The application includes several security-related controls:
@@ -436,14 +453,16 @@ The project is intended for educational and portfolio development purposes. Thes
 - [x] Restricted production configuration and one-time Admin bootstrap
 - [x] Manual deployment, backup, and smoke-test process documented in DevOps SOP
 - [x] Forwarded Headers middleware configuration
+- [x] Fix and verify `AddArticleCategory` migration with fresh-database and existing-data upgrade tests
+- [x] GitHub repository with `master` as the default branch
+- [x] GitHub Actions CI: Restore, Build, LocalDB initialization, EF Core migrations, and xUnit integration tests
 
 ### Pending / Planned
 
-- [ ] Fix and re-test `AddArticleCategory` migration for clean database initialization
 - [ ] Verify forwarded client IP / scheme behavior end-to-end
 - [ ] Add HTTPS / TLS before exposing the application publicly
 - [ ] Repeatable deployment scripts
-- [ ] Automated deployment workflow (CI/CD)
+- [ ] Automated deployment workflow (CD); CI is already implemented
 - [ ] Add portfolio screenshots or a recorded offline demo
 
 ## Project Purpose
@@ -459,4 +478,4 @@ LoginExample is a practical backend engineering project intended to strengthen s
 - Integration testing
 - Software maintenance and version control
 
-The longer-term objective is to strengthen maintainability and deployment reliability, resolve known migration issues, and automate the currently manual release workflow.
+The longer-term objective is to improve maintainability, test coverage, and deployment reliability while progressively automating the currently manual release process.
