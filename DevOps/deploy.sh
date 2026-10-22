@@ -1,70 +1,99 @@
-
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# LoginExample Deployment Script
-# Phase 1: Preflight checks only.
+# LoginExample Deployment Pipeline
 
 APP_DIR="/opt/loginexample"
-CONFIG_LINK="$APP_DIR/appsettings.Production.json"
 CONFIG_FILE="/etc/loginexample/appsettings.Production.json"
+CONFIG_LINK="$APP_DIR/appsettings.Production.json"
+BACKUP_DIR="/var/backups/loginexample"
 SERVICE="loginexample"
 
-STAGING_DIR="${1:-$HOME/apps/LoginExample-next}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SWITCH_SCRIPT="$SCRIPT_DIR/switch-release.sh"
 
-echo "=== LoginExample Deployment Preflight ==="
+ACTION="${1:-}"
+STAGING_DIR="${2:-}"
+RELEASE_ID="${3:-}"
 
-# 1. Check deployment source
-if [[ ! -f "$STAGING_DIR/LoginExample.dll" ]]; then
-    echo "ERROR: LoginExample.dll not found in staging directory."
-    exit 1
+# 1. Validate arguments
+case "$ACTION" in
+    --check|--backup|--apply)
+        ;;
+    *)
+        echo "Usage: bash deploy.sh <--check|--backup|--apply> <staging-dir> [release-id]"
+        exit 2
+        ;;
+esac
+
+if [[ -z "$STAGING_DIR" || "$STAGING_DIR" != /* ]]; then
+    echo "ERROR: Staging directory must be an absolute path."
+    exit 2
 fi
 
+if [[ "$ACTION" == "--apply" ]]; then
+    if [[ ! "$RELEASE_ID" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+        echo "ERROR: Invalid release ID."
+        exit 2
+    fi
+
+    RELEASE_DIR="/opt/loginexample-release-${RELEASE_ID}"
+    PREVIOUS_DIR="/opt/loginexample-previous-${RELEASE_ID}"
+fi
+
+echo "=== LoginExample Deployment Pipeline ==="
+echo "Action: $ACTION"
+echo "Staging: $STAGING_DIR"
+
+# 2. Preflight
+echo
+echo "=== Preflight ==="
+
+test -f "$STAGING_DIR/LoginExample.dll"
 echo "[OK] Staging DLL exists"
 
-# 2. Check required commands
-command -v rsync >/dev/null
-command -v systemctl >/dev/null
-command -v tar >/dev/null
-
+for cmd in sudo rsync tar systemctl curl; do
+    command -v "$cmd" >/dev/null
+done
 echo "[OK] Required commands available"
 
-# 3. Check production directory
-if ! sudo test -d "$APP_DIR"; then
-    echo "ERROR: Production directory does not exist."
-    exit 1
-fi
-
+sudo test -d "$APP_DIR"
 echo "[OK] Production directory exists"
 
-# 4. Protect production configuration
-if [[ "$(sudo readlink "$CONFIG_LINK")" != "$CONFIG_FILE" ]]; then
-    echo "ERROR: Production configuration symlink is invalid."
-    exit 1
-fi
-
-if ! sudo -u loginexample test -r "$CONFIG_LINK"; then
-    echo "ERROR: Service account cannot read Production configuration."
-    exit 1
-fi
-
+test "$(sudo readlink "$CONFIG_LINK")" = "$CONFIG_FILE"
+sudo -u loginexample test -r "$CONFIG_LINK"
 echo "[OK] Production configuration is protected"
 
-# 5. Check service state
-if ! systemctl is-active --quiet "$SERVICE"; then
-    echo "ERROR: LoginExample service is not active."
-    exit 1
+systemctl is-active --quiet "$SERVICE"
+echo "[OK] Service is active"
+
+if [[ "$ACTION" == "--apply" ]]; then
+    test -f "$SWITCH_SCRIPT" || {
+        echo "ERROR: switch-release.sh not found."
+        exit 1
+    }
+
+    if sudo test -e "$RELEASE_DIR" ||
+       sudo test -L "$RELEASE_DIR" ||
+       sudo test -e "$PREVIOUS_DIR" ||
+       sudo test -L "$PREVIOUS_DIR"; then
+        echo "ERROR: Release ID has already been used or its path exists."
+        exit 1
+    fi
+
+    echo "[OK] Release paths available"
 fi
 
-echo "[OK] LoginExample service is active"
-
-echo
 echo "Preflight passed."
 
-# 6. Create deployment backup
-BACKUP_DIR="/var/backups/loginexample"
+if [[ "$ACTION" == "--check" ]]; then
+    echo "No deployment changes were made."
+    exit 0
+fi
 
-echo "=== Creating Deployment Backup ==="
+# 3. Backup
+echo
+echo "=== Backup ==="
 
 sudo install -d -o root -g root -m 0700 "$BACKUP_DIR"
 
@@ -72,12 +101,43 @@ BACKUP_FILE="$(sudo mktemp \
     "$BACKUP_DIR/loginexample-$(date +%Y%m%d-%H%M%S)-XXXXXX.tar.gz")"
 
 sudo tar -C /opt -czf "$BACKUP_FILE" loginexample
+sudo tar -tzf "$BACKUP_FILE" >/dev/null
 
-# Verify archive integrity
-sudo tar -tzf "$BACKUP_FILE" > /dev/null
+echo "[OK] Backup created and verified: $BACKUP_FILE"
 
-echo "[OK] Backup created: $BACKUP_FILE"
-echo "[OK] Backup archive verified"
+if [[ "$ACTION" == "--backup" ]]; then
+    echo "Backup completed. Application was not modified."
+    exit 0
+fi
+
+# 4. Prepare release
+echo
+echo "=== Prepare Release: $RELEASE_ID ==="
+
+sudo install -d \
+    -o root -g loginexample -m 750 \
+    "$RELEASE_DIR"
+
+sudo rsync -rlt \
+    --chown=root:loginexample \
+    --chmod=D750,F640 \
+    --exclude='/appsettings.Production.json' \
+    "$STAGING_DIR/" \
+    "$RELEASE_DIR/"
+
+sudo ln -s "$CONFIG_FILE" \
+    "$RELEASE_DIR/appsettings.Production.json"
+
+# 5. Verify release before switching
+sudo bash "$SWITCH_SCRIPT" --check "$RELEASE_ID"
+
+echo "[OK] Release candidate verified"
+
+# 6. Activate release and handle rollback
+echo
+echo "=== Activate Release ==="
+
+sudo bash "$SWITCH_SCRIPT" --apply "$RELEASE_ID"
 
 echo
-echo "Backup completed. Application was not modified."
+echo "Deployment pipeline completed successfully."
