@@ -41,6 +41,25 @@ if [[ "$ACTION" == "--apply" ]]; then
     PREVIOUS_DIR="/opt/loginexample-previous-${RELEASE_ID}"
 fi
 
+# Require root privileges for the deployment pipeline.
+if [[ "$EUID" -ne 0 ]]; then
+    echo "ERROR: Run using sudo bash deploy.sh."
+    exit 1
+fi
+
+# Shared deployment lock.
+# File descriptor 9 remains open for the entire pipeline.
+LOCK_FILE="/run/lock/loginexample-deploy.lock"
+
+umask 077
+exec 9>"$LOCK_FILE"
+
+if ! flock -n 9; then
+    echo "ERROR: Another deployment is already running."
+    exit 1
+fi
+
+echo "[OK] Deployment lock acquired."
 echo "=== LoginExample Deployment Pipeline ==="
 echo "Action: $ACTION"
 echo "Staging: $STAGING_DIR"
@@ -52,7 +71,7 @@ echo "=== Preflight ==="
 test -f "$STAGING_DIR/LoginExample.dll"
 echo "[OK] Staging DLL exists"
 
-for cmd in sudo rsync tar systemctl curl; do
+for cmd in sudo rsync tar systemctl curl flock; do
     command -v "$cmd" >/dev/null
 done
 echo "[OK] Required commands available"
@@ -129,7 +148,7 @@ sudo ln -s "$CONFIG_FILE" \
     "$RELEASE_DIR/appsettings.Production.json"
 
 # 5. Verify release before switching
-sudo bash "$SWITCH_SCRIPT" --check "$RELEASE_ID"
+bash "$SWITCH_SCRIPT" --check "$RELEASE_ID"
 
 echo "[OK] Release candidate verified"
 
@@ -137,7 +156,7 @@ echo "[OK] Release candidate verified"
 echo
 echo "=== Activate Release ==="
 
-sudo bash "$SWITCH_SCRIPT" --apply "$RELEASE_ID"
+bash "$SWITCH_SCRIPT" --apply "$RELEASE_ID"
 
 echo
 echo "Deployment pipeline completed successfully."

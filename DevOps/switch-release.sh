@@ -31,11 +31,18 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-# Prevent concurrent deployments.
+# Shared deployment lock.
 LOCK_FILE="/run/lock/loginexample-deploy.lock"
 
 umask 077
-exec 9>"$LOCK_FILE"
+
+# Reuse file descriptor 9 when inherited from deploy.sh.
+if [[ -e "/proc/$$/fd/9" ]] &&
+   [[ "$(readlink "/proc/$$/fd/9")" == "$LOCK_FILE" ]]; then
+    echo "[INFO] Reusing inherited deployment lock."
+else
+    exec 9>"$LOCK_FILE"
+fi
 
 if ! flock -n 9; then
     echo "ERROR: Another deployment is already running."
