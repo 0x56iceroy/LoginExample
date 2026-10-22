@@ -243,9 +243,11 @@ namespace LoginExample.Controllers
             if (article.Status != ArticlesStatus.Published)
                 return BadRequest("Only published articles can be archived.");
 
+            var now = DateTime.UtcNow;
+
             article.Status = ArticlesStatus.Archived;
-            article.ArchivedAt = DateTime.UtcNow;
-            article.UpdatedAt = DateTime.UtcNow;
+            article.ArchivedAt = now;
+            article.UpdatedAt = now;
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));

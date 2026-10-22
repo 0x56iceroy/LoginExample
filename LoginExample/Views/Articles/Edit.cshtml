@@ -2,6 +2,7 @@
     For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 *@
 @model LoginExample.ViewModels.ArticleEditViewModel
+
 @{
     ViewData["Title"] = "Edit Article";
 }
@@ -32,8 +33,7 @@
     </div>
 </form>
 
-<a asp-action="Index">Back to Articles</a>
-
+<a asp-action="Index" class="btn btn-secondary">Back to Articles</a>
 @section Scripts{
     <partial name="_ValidationScriptsPartial" />
 }
