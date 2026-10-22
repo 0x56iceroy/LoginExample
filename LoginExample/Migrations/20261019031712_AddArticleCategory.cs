@@ -35,9 +35,11 @@ namespace LoginExample.Migrations
                 values: new object[] { 1, "未分類" });
 
             migrationBuilder.Sql("""
-                UPDATE Articles
-                SET CategoryId = 1
-                WHERE CategoryId IS NULL;
+                EXEC(N'
+                    UPDATE [Articles]
+                    SET [CategoryId] = 1
+                    WHERE [CategoryId] IS NULL;
+                ');
                 """);
 
             migrationBuilder.AlterColumn<int>(
