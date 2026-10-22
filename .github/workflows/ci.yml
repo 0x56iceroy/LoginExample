@@ -31,3 +31,16 @@ jobs:
 
       - name: Build application and tests
         run: dotnet build LoginExample.Tests/LoginExample.Tests.csproj --configuration Release --no-restore
+
+      - name: Check SQL Server LocalDB
+        shell: pwsh
+        run: |
+          $localDb = Get-Command SqlLocalDB.exe -ErrorAction SilentlyContinue
+
+          if ($null -eq $localDb) {
+            Write-Output "LocalDB command not found."
+          }
+          else {
+            Write-Output "LocalDB executable: $($localDb.Source)"
+            SqlLocalDB.exe info
+          }
