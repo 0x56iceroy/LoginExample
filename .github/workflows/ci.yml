@@ -32,15 +32,19 @@ jobs:
       - name: Build application and tests
         run: dotnet build LoginExample.Tests/LoginExample.Tests.csproj --configuration Release --no-restore
 
-      - name: Check SQL Server LocalDB
+      - name: Start SQL Server LocalDB
         shell: pwsh
         run: |
-          $localDb = Get-Command SqlLocalDB.exe -ErrorAction SilentlyContinue
+          $localDb = Get-Command SqlLocalDB.exe -ErrorAction Stop
 
-          if ($null -eq $localDb) {
-            Write-Output "LocalDB command not found."
+          Write-Output "LocalDB executable: $($localDb.Source)"
+
+          SqlLocalDB.exe start MSSQLLocalDB
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to start MSSQLLocalDB."
           }
-          else {
-            Write-Output "LocalDB executable: $($localDb.Source)"
-            SqlLocalDB.exe info
+
+          SqlLocalDB.exe info MSSQLLocalDB
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to retrieve LocalDB instance information."
           }
