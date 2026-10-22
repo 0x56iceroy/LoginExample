@@ -48,3 +48,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Failed to retrieve LocalDB instance information."
           }
+
+      - name: Initialize integration test database
+        shell: pwsh
+        env:
+          ASPNETCORE_ENVIRONMENT: Testing
+          DOTNET_ENVIRONMENT: Testing
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.13
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to install dotnet-ef."
+          }
+
+          dotnet ef database update `
+            --project LoginExample/LoginExample.csproj `
+            --startup-project LoginExample/LoginExample.csproj `
+            --context ApplicationDbContext
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to apply database migrations."
+          }
