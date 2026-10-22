@@ -1,10 +1,12 @@
 # LoginExample
 
-An ASP.NET Core MVC application built with .NET 10, Entity Framework Core, ASP.NET Core Identity, and Microsoft SQL Server.
+An ASP.NET Core MVC application built with .NET 10, Entity Framework Core, ASP.NET Core Identity, and Microsoft SQL Server. Developed on Windows and deployed to an Ubuntu virtual machine with Nginx and systemd.
 
 LoginExample is a backend development project focused on implementing authentication, authorization, article and category management, data integrity, and secure web application practices.
 
-The project is developed incrementally, with an emphasis on understanding application behavior, database operations, testing, and maintainability.
+The project is developed incrementally, with an emphasis on application behavior, database operations, testing, maintainability, and repeatable deployment.
+
+**Portfolio demo:** The application is running in a local Ubuntu VM; no publicly accessible demo URL is provided. The source code, architecture, and deployment runbook document the implementation.
 
 ## Tech Stack
 
@@ -20,6 +22,8 @@ The project is developed incrementally, with an emphasis on understanding applic
 | Testing | xUnit, ASP.NET Core Integration Testing |
 | Version Control | Git |
 | Development Environment | Windows, SQL Server Express LocalDB |
+| Deployment Environment | Ubuntu 26.04.1 VM, .NET 10 runtime, SQL Server 2025 |
+| Web Hosting | Kestrel, Nginx reverse proxy, systemd |
 
 ## Features
 
@@ -106,6 +110,50 @@ When an administrator soft-deletes a category:
 If a database operation fails, the transaction is rolled back.
 
 Restoring a deleted category makes the category available again but does not automatically restore its previous article associations.
+
+## Deployment Architecture
+
+The current deployment is a **local VM demonstration environment**, not a publicly hosted production service.
+
+```mermaid
+flowchart TD
+    Browser[Browser on host Windows PC] -->|HTTP port 80| Nginx[Nginx on Ubuntu VM]
+    Nginx -->|Proxy to 127.0.0.1:5000| Kestrel[ASP.NET Core / Kestrel]
+    Systemd[systemd: loginexample.service] -->|Manage process| Kestrel
+    Kestrel --> EF[Entity Framework Core / Identity]
+    EF --> SQL[SQL Server 2025 / LoginExampleDb]
+```
+
+### Environment and Service Design
+
+- The application is published on Windows using `dotnet publish -c Release` and copied to the VM using SSH/SCP.
+- Published application files are deployed under `/opt/loginexample`, with the application run by a dedicated, non-login Linux service account.
+- Production configuration is stored separately in `/etc/loginexample/appsettings.Production.json` with restricted filesystem permissions and accessed through a symlink. **Credentials are not committed to Git.**
+- `loginexample.service` starts the application automatically after VM reboot and supports start/stop/restart via systemd.
+- Nginx proxies HTTP requests on port 80 to Kestrel bound to `127.0.0.1:5000`.
+- The deployment procedure includes a pre-update backup, a staged file transfer, service restart, and smoke-test checks.
+- SQL Server access uses a dedicated application login rather than the server administrator account.
+
+The full initial setup and manual redeployment procedure is documented in [Ubuntu Deployment and Redeployment SOP](DevOps/LoginExample_Ubuntu_部署與再部署_SOP.md).
+
+### Manual Redeployment Summary
+
+Run from the **repository root on Windows**:
+
+```powershell
+dotnet test
+dotnet publish .\LoginExample\LoginExample.csproj -c Release -o .\publish
+```
+
+Then transfer the publish output to a **staging directory** on the Ubuntu VM. Back up the installed application, stop `loginexample.service`, copy only the application publish files into `/opt/loginexample` **without overwriting** the `appsettings.Production.json` symlink, restore appropriate ownership/permissions, and restart the service. Validate the service and both direct Kestrel and Nginx routes:
+
+```bash
+systemctl is-active loginexample
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:5000/Articles
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/Articles
+```
+
+The current workflow is **manual**; it is not a CI/CD pipeline. Refer to the SOP for the ordered commands and backup/rollback instructions, rather than using this summary as an executable script.
 
 ## Getting Started
 
@@ -241,6 +289,8 @@ Entity Framework Core tracks applied migrations in the `__EFMigrationsHistory` d
 
 Running `dotnet ef database update` applies any migrations that have not yet been applied to the configured database.
 
+> **Known migration issue:** The `AddArticleCategory` migration currently contains a SQL update that can fail with `Invalid column name CategoryId` when applied to a fresh SQL Server database. The Ubuntu demo database was initialized using a manually corrected SQL script. The original C# migration needs to be fixed and re-tested before treating fresh database setup as fully reproducible. Do not apply the existing migration chain blindly against an important database.
+
 ### 5. Run the Application
 
 Start the application in the Development environment:
@@ -280,6 +330,8 @@ The setup process is:
 5. The application locates the existing user and assigns the `Admin` role if necessary.
 
 The application does not automatically create an administrator account.
+
+For the Ubuntu demo environment, administrator role assignment is performed separately through an explicit **one-time production bootstrap mode**, enabled with `LOGINEXAMPLE_BOOTSTRAP_ADMIN=1` and an existing account supplied via `SeedAdmin:Email`. This mode is not enabled in the normal systemd service. Do not run bootstrap automatically for every application startup.
 
 If an email address is configured but no matching user exists, application startup will fail with a configuration-related exception.
 
@@ -354,6 +406,8 @@ The application includes several security-related controls:
 - Database uniqueness constraints
 - Transaction-based consistency for multi-step operations
 - Separation between development and integration-test databases
+- Restricted Linux service-account permissions and separate production configuration
+- Forwarded Headers middleware configured for a local trusted reverse proxy (behavioral header validation pending)
 
 User interface visibility is not treated as an authorization boundary.
 
@@ -376,15 +430,21 @@ The project is intended for educational and portfolio development purposes. Thes
 - [x] Integration tests for selected critical scenarios
 - [x] Article and category navigation
 - [x] Initial project documentation
+- [x] Linux VM deployment with .NET 10 runtime and SQL Server 2025
+- [x] Nginx reverse proxy over the local demo network (HTTP)
+- [x] systemd service configuration and reboot verification
+- [x] Restricted production configuration and one-time Admin bootstrap
+- [x] Manual deployment, backup, and smoke-test process documented in DevOps SOP
+- [x] Forwarded Headers middleware configuration
 
-### Planned
+### Pending / Planned
 
-- [ ] Linux deployment
-- [ ] systemd service configuration
-- [ ] Production-oriented configuration management
+- [ ] Fix and re-test `AddArticleCategory` migration for clean database initialization
+- [ ] Verify forwarded client IP / scheme behavior end-to-end
+- [ ] Add HTTPS / TLS before exposing the application publicly
 - [ ] Repeatable deployment scripts
-- [ ] Automated deployment workflow
-- [ ] Deployment and operations documentation
+- [ ] Automated deployment workflow (CI/CD)
+- [ ] Add portfolio screenshots or a recorded offline demo
 
 ## Project Purpose
 
@@ -399,4 +459,4 @@ LoginExample is a practical backend engineering project intended to strengthen s
 - Integration testing
 - Software maintenance and version control
 
-The longer-term objective is to develop the application toward a deployable and maintainable system, including Linux hosting, service management, configuration security, and deployment automation.
+The longer-term objective is to strengthen maintainability and deployment reliability, resolve known migration issues, and automate the currently manual release workflow.
