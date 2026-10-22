@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 
 namespace LoginExample
 {
@@ -51,7 +53,78 @@ namespace LoginExample
                 options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
             });
 
+            // 只信任本機反向代理
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor |
+                    ForwardedHeaders.XForwardedProto;
+
+                options.KnownProxies.Add(IPAddress.Loopback);
+                options.KnownProxies.Add(IPAddress.IPv6Loopback);
+
+                options.ForwardLimit = 1;
+            });
+
             var app = builder.Build();
+
+
+            // One-time administrator bootstrap.
+            // Runs only when explicitly enabled by the deployer.
+            if (Environment.GetEnvironmentVariable("LOGINEXAMPLE_BOOTSTRAP_ADMIN") == "1")
+            {
+                var adminEmail = builder.Configuration["SeedAdmin:Email"];
+
+                if (string.IsNullOrWhiteSpace(adminEmail))
+                {
+                    throw new InvalidOperationException(
+                        "SeedAdmin:Email is required.");
+                }
+
+                using var scope = app.Services.CreateScope();
+
+                var roleManager = scope.ServiceProvider
+                    .GetRequiredService<RoleManager<IdentityRole>>();
+
+                var userManager = scope.ServiceProvider
+                    .GetRequiredService<UserManager<IdentityUser>>();
+
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+                if (adminUser is null)
+                {
+                    throw new InvalidOperationException(
+                        "The specified administrator account does not exist.");
+                }
+
+                if (!await roleManager.RoleExistsAsync("Admin"))
+                {
+                    var result = await roleManager.CreateAsync(
+                        new IdentityRole("Admin"));
+
+                    if (!result.Succeeded)
+                    {
+                        throw new InvalidOperationException(
+                            string.Join("; ", result.Errors.Select(e => e.Description)));
+                    }
+                }
+
+                if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
+                {
+                    var result = await userManager.AddToRoleAsync(
+                        adminUser, "Admin");
+
+                    if (!result.Succeeded)
+                    {
+                        throw new InvalidOperationException(
+                            string.Join("; ", result.Errors.Select(e => e.Description)));
+                    }
+                }
+
+                Console.WriteLine("Admin bootstrap completed.");
+
+                return;
+            }
 
             if (app.Environment.IsDevelopment())
             {
@@ -94,7 +167,10 @@ namespace LoginExample
                 }
             }
 
+
             // Configure the HTTP request pipeline.
+            app.UseForwardedHeaders();
+
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
