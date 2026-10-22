@@ -6,10 +6,10 @@
     ViewData["Title"] = "分類管理";
 }
 <h1>分類管理</h1>
-<h3>新增分類</h3>
 
 @if (User.IsInRole("Admin"))
 {
+<h3>新增分類</h3>
     <form asp-controller="Categories" asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class ="text-danger"></div>
@@ -54,6 +54,12 @@
                 <td>
                     @if (category.Id != 1)
                     {
+                        <a asp-controller="Categories"
+                           asp-action="Edit"
+                           asp-route-id="@category.Id"
+                           class="btn btn-primary btn-sm">
+                            編輯
+                        </a>
                         <a asp-controller="Categories"
                            asp-action="Delete"
                            asp-route-id="@category.Id"

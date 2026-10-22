@@ -132,7 +132,7 @@ namespace LoginExample.Controllers
 
             var category = await _context.Categories
                 .AsNoTracking()
-                .Where(c => c.Id == id)
+                .Where(c => c.Id == id && !c.IsDeleted)
                 .Select(c => new CategoryEditViewModel
                 {
                     Id = c.Id,
@@ -169,7 +169,7 @@ namespace LoginExample.Controllers
             }
 
             var category = await _context.Categories
-                .FirstOrDefaultAsync(c => c.Id == id);
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
 
             if (category is null)
             {

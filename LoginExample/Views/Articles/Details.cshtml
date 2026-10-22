@@ -27,10 +27,19 @@
 <a asp-controller="Articles" asp-action="Index">Back to Articles</a>
 
 @if (Model.AuthorId == User.FindFirstValue(ClaimTypes.NameIdentifier)
-    && Model.Status == ArticlesStatus.Published)
+                && Model.Status == ArticlesStatus.Published)
 {
     <a asp-controller="Articles"
     asp-action="Edit"
-    asp-route-id="@Model.Id">Edit Article</a>
-    <a asp-action="Archive" asp-route-id="@Model.Id" class="btn btn-warning">Archive</a>
+    asp-route-id="@Model.Id"
+    class="btn btn-primary">
+        Edit Article
+    </a>
+
+    <a asp-controller="Articles"
+    asp-action="Archive"
+    asp-route-id="@Model.Id"
+    class="btn btn-warning">
+        Archive
+    </a>
 }
