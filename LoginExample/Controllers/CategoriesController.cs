@@ -36,13 +36,7 @@ namespace LoginExample.Controllers
             return View(model);
         }
 
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public IActionResult Create([Bind(Prefix = "Create")] CategoryCreateViewModel model)
-        //{
-        //    return View(new CategoryCreateViewModel());
-        //}
-
+        
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
@@ -190,6 +184,7 @@ namespace LoginExample.Controllers
         }
 
         [HttpGet]
+        [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -200,7 +195,7 @@ namespace LoginExample.Controllers
 
             var category = await _context.Categories
                 .AsNoTracking()
-                .Where(c => c.Id == id)
+                .Where(c => c.Id == id && !c.IsDeleted)
                 .Select(c => new CategoryIndexViewModel
                 {
                     Id = c.Id,
@@ -217,12 +212,39 @@ namespace LoginExample.Controllers
             return View(category);
         }
 
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //[ActionName("Delete")]
-        //public async Task<IActionResult> DeleteConfirmed(int id)
-        //{
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [ActionName("Delete")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            if (id == 1)
+            {
+                return Forbid();
+            }
 
-        //}
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+            if (category is null)
+            {
+                return NotFound();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            int affectedRows = await _context.Articles
+                .Where(a => a.CategoryId == id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(a => a.CategoryId, 1));
+
+            category.IsDeleted = true;
+            category.DeletedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+      
     }
 }
