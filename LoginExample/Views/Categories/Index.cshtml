@@ -12,7 +12,7 @@
 {
     <form asp-controller="Categories" asp-action="Create" method="post">
         @Html.AntiForgeryToken()
-        <div asp-validation-summery="ModelOnly" class ="text-danger"></div>
+        <div asp-validation-summary="ModelOnly" class ="text-danger"></div>
         <div class="mb-3">
             <label asp-for="Create.Name" class="form-label">
                 分類名稱
@@ -35,19 +35,82 @@
             <th>分類 ID</th>
             <th>分類名稱</th>
             <th>文章數量</th>
+            @if (User.IsInRole("Admin"))
+            {
+                <th>操作</th>
+            }
         </tr>
     </thead>
     <tbody>
-        @foreach (var category in Model.Categories)
-        {
-            <tr>
-                <td>@category.Id</td>
-                <td>@category.Name</td>
-                <td>@category.ArticleCount</td>
-            </tr>
-        }
-    </tbody>
+    @foreach (var category in Model.Categories)
+    {
+        <tr>
+            <td>@category.Id</td>
+            <td>@category.Name</td>
+            <td>@category.ArticleCount</td>
+
+            @if (User.IsInRole("Admin"))
+            {
+                <td>
+                    @if (category.Id != 1)
+                    {
+                        <a asp-controller="Categories"
+                           asp-action="Delete"
+                           asp-route-id="@category.Id"
+                           class="btn btn-danger btn-sm">
+                            刪除
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">系統保留</span>
+                    }
+                </td>
+            }
+        </tr>
+    }
+</tbody>
 </table>
+
+@if (User.IsInRole("Admin"))
+{
+    <hr/>
+    <h3>已刪除分類</h3>
+
+    @if (!Model.DeletedCategories.Any())
+    {
+        <p>目前沒有已刪除的分類</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>分類</th>
+                    <th>分類名稱</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var category in Model.DeletedCategories)
+                {
+                    <tr>
+                        <td>@category.Id</td>
+                        <td>@category.Name</td>
+                        <td>
+                            <form asp-controller="Categories" asp-action="Restore"
+                            asp-route-id="@category.Id" method="post">
+                            @Html.AntiForgeryToken()
+
+                            <button type="submit" class="btn btn-success">復原</button>
+                        </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
 
 @* @section Srcipte {
     <partial nema="_ValidationScriptsPartial"

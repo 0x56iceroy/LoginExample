@@ -22,10 +22,23 @@ namespace LoginExample.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            var articles = await _context.Articles
-                .Where(a => a.Status == ArticlesStatus.Published)
-                .OrderByDescending(a => a.CreatedAt)
-                .ToListAsync();
+            var articles = await (
+                from article in _context.Articles.AsNoTracking()
+                join user in _context.Users.AsNoTracking()
+                    on article.AuthorId equals user.Id into authors
+                from author in authors.DefaultIfEmpty()
+                where article.Status == ArticlesStatus.Published
+                orderby article.CreatedAt descending
+                select new ArticleListItemViewModel
+                {
+                    Id = article.Id,
+                    Title = article.Title,
+                    CreatedAt = article.CreatedAt,
+                    AuthorId = article.AuthorId,
+                    AuthorName = author != null
+                        ? (author.UserName ?? "未知作者")
+                        : "未知作者"
+                }).ToListAsync();
 
             return View(articles);
         }
@@ -55,13 +68,13 @@ namespace LoginExample.Controllers
             }
 
             bool categoryExists = await _context.Categories
-                .AnyAsync(c => c.Id == model.CategoryId);
+                .AnyAsync(c => c.Id == model.CategoryId && !c.IsDeleted);
 
             if (!categoryExists)
             {
                 ModelState.AddModelError(
                     nameof(model.CategoryId),
-                    "指定的文章分類不存在");
+                    "指定的文章分類不存在或已被刪除");
                 await LoadCategoriesAsync(model);
                 return View(model);
             }
@@ -94,6 +107,7 @@ namespace LoginExample.Controllers
         {
             var article = await _context.Articles
                 .AsNoTracking()
+                .Include(a => a.Category)
                 .FirstOrDefaultAsync(a => a.Id == id);
             if (article is null)
             {
@@ -129,8 +143,12 @@ namespace LoginExample.Controllers
             var model = new ArticleEditViewModel
             {
                 Title = article.Title,
-                Content = article.Content
+                Content = article.Content,
+                CategoryId = article.CategoryId,
             };
+
+            model.Categories = await GetCategoryOptionsAsync();
+
             return View(model);
         }
 
@@ -141,6 +159,7 @@ namespace LoginExample.Controllers
         {
             if (!ModelState.IsValid)
             {
+                model.Categories = await GetCategoryOptionsAsync();
                 return View(model);
             }
 
@@ -161,8 +180,19 @@ namespace LoginExample.Controllers
             if (article.Status != ArticlesStatus.Published)
                 return BadRequest("Archived articles cannot be edit.");
 
+            bool categoryExists = await _context.Categories
+                .AnyAsync(c => c.Id == model.CategoryId && !c.IsDeleted);
+
+            if (!categoryExists)
+            {
+                ModelState.AddModelError(nameof(model.CategoryId), "指定的文章分類不存在或已被刪除");
+                model.Categories = await GetCategoryOptionsAsync();
+                return View(model);
+            }
+
             article.Title = model.Title;
             article.Content = model.Content;
+            article.CategoryId = model.CategoryId;
             article.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -324,8 +354,14 @@ namespace LoginExample.Controllers
 
         private async Task LoadCategoriesAsync(ArticleCreateViewModel model)
         {
-            model.Categories = await _context.Categories
+            model.Categories = await GetCategoryOptionsAsync();
+        }
+
+        private async Task<List<SelectListItem>> GetCategoryOptionsAsync()
+        {
+            return await _context.Categories
                 .AsNoTracking()
+                .Where(c => !c.IsDeleted)
                 .OrderBy(c => c.Name)
                 .Select(c => new SelectListItem
                 {

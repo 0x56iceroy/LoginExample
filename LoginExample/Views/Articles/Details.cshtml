@@ -2,7 +2,7 @@
     For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 *@
 
-@model LoginExample.Models.Article;
+@model LoginExample.Models.Article
 @using System.Security.Claims
 @using LoginExample.Models
 @{
@@ -10,6 +10,10 @@
 }
 
 <h2>@Model.Title</h2>
+<p>
+    <strong>文章分類：</strong>
+    @(Model.Category?.Name ?? "分類資料無法取得")
+</p>
 <p>
     Create ad:
     @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC
@@ -22,14 +26,11 @@
 
 <a asp-controller="Articles" asp-action="Index">Back to Articles</a>
 
-@if (User.Identity?.IsAuthenticated == true)
+@if (Model.AuthorId == User.FindFirstValue(ClaimTypes.NameIdentifier)
+    && Model.Status == ArticlesStatus.Published)
 {
     <a asp-controller="Articles"
     asp-action="Edit"
     asp-route-id="@Model.Id">Edit Article</a>
-}
-@if (Model.AuthorId == User.FindFirstValue(ClaimTypes.NameIdentifier)
-&& Model.Status == ArticlesStatus.Published)
-{
     <a asp-action="Archive" asp-route-id="@Model.Id" class="btn btn-warning">Archive</a>
 }

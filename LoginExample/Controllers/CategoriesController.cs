@@ -24,6 +24,7 @@ namespace LoginExample.Controllers
             var model = new CategoryManagementViewModel();
             model.Categories = await _context.Categories
                 .AsNoTracking()
+                .Where(c=> !c.IsDeleted)
                 .OrderBy(c => c.Name)
                 .Select(c => new CategoryIndexViewModel
                 {
@@ -32,6 +33,21 @@ namespace LoginExample.Controllers
                     ArticleCount = c.Articles.Count()
                 })
                 .ToListAsync();
+
+            if (User.IsInRole("Admin"))
+            {
+                model.DeletedCategories = await _context.Categories
+                    .AsNoTracking()
+                    .Where(c => c.IsDeleted)
+                    .OrderBy(c => c.Name)
+                    .Select(c => new CategoryIndexViewModel
+                    {
+                        Id = c.Id,
+                        Name = c.Name,
+                        ArticleCount = c.Articles.Count()
+                    })
+                    .ToListAsync();
+            }
 
             return View(model);
         }
@@ -93,6 +109,7 @@ namespace LoginExample.Controllers
 
             model.Categories = await _context.Categories
                 .AsNoTracking()
+                .Where(c => !c.IsDeleted)
                 .OrderBy(c => c.Name)
                 .Select(c => new CategoryIndexViewModel
                 {
@@ -184,7 +201,6 @@ namespace LoginExample.Controllers
         }
 
         [HttpGet]
-        [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -242,6 +258,32 @@ namespace LoginExample.Controllers
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles ="Admin")]
+        public async Task<IActionResult> Restore(int id)
+        {
+            if (id == 1)
+            {
+                return Forbid();
+            }
+
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(c => c.Id == id && c.IsDeleted);
+
+            if (category is null)
+            {
+                return NotFound();
+            }
+
+            category.IsDeleted = false;
+            category.DeletedAt = null;
+
+            await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }
