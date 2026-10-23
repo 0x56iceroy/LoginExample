@@ -73,6 +73,30 @@ test "$(readlink "$RELEASE_DIR/appsettings.Production.json")" = "$CONFIG"
 runuser -u loginexample -- test -r "$RELEASE_DIR/LoginExample.dll"
 runuser -u loginexample -- test -r "$RELEASE_DIR/appsettings.Production.json"
 
+# Verify release file and directory permissions as the service account.
+echo "Checking release permissions..."
+
+if ! runuser -u loginexample -- bash -c '
+    set -euo pipefail
+
+    cd /
+    release_dir="$1"
+
+    invalid_path=$(find "$release_dir" \
+        \( -type d ! -executable -o -type f ! -readable \) \
+        -print -quit)
+
+    if [[ -n "$invalid_path" ]]; then
+        echo "ERROR: Inaccessible release path: $invalid_path"
+        exit 1
+    fi
+' _ "$RELEASE_DIR"; then
+    echo "ERROR: Release permission verification failed."
+    exit 1
+fi
+
+echo "[OK] Release permissions verified."
+
 systemctl is-active --quiet "$SERVICE"
 
 if [[ "$ACTION" == "--check" ]]; then
