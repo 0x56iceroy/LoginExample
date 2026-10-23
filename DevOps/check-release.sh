@@ -29,6 +29,22 @@ fi
 
 echo "[OK] Release check lock acquired."
 
+# Load GitHub credentials provided by systemd when GH_TOKEN is unset.
+if [[ -z "${GH_TOKEN:-}" && -n "${CREDENTIALS_DIRECTORY:-}" ]]; then
+    CREDENTIAL_FILE="${CREDENTIALS_DIRECTORY}/github-token"
+
+    if [[ ! -f "$CREDENTIAL_FILE" ||
+          ! -s "$CREDENTIAL_FILE" ||
+          ! -r "$CREDENTIAL_FILE" ||
+          -L "$CREDENTIAL_FILE" ]]; then
+        echo "ERROR: GitHub credential file is unavailable." >&2
+        exit 2
+    fi
+
+    GH_TOKEN="$(< "$CREDENTIAL_FILE")"
+    export GH_TOKEN
+fi
+
 # Require authentication without storing credentials in the script.
 if [[ -z "${GH_TOKEN:-}" ]]; then
     echo "ERROR: GH_TOKEN is not configured." >&2

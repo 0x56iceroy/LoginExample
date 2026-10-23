@@ -1,0 +1,11 @@
+[Unit]
+Description=Check LoginExample GitHub Artifacts Every 15 Minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=30s
+Unit=loginexample-cd.service
+
+[Install]
+WantedBy=timers.target

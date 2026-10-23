@@ -1,0 +1,23 @@
+[Unit]
+Description=LoginExample GitHub Artifact Downloader
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=vic
+Group=vic
+WorkingDirectory=/home/vic
+Environment=HOME=/home/vic
+
+LoadCredential=github-token:/etc/loginexample/cd/github-token
+
+ExecStart=/usr/bin/bash /home/vic/check-release.sh --download
+
+TimeoutStartSec=10min
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
