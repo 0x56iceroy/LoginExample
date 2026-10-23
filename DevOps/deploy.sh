@@ -137,7 +137,7 @@ sudo install -d \
     -o root -g loginexample -m 750 \
     "$RELEASE_DIR"
 
-sudo rsync -rlt \
+sudo rsync -rltp \
     --chown=root:loginexample \
     --chmod=D750,F640 \
     --exclude='/appsettings.Production.json' \
