@@ -479,3 +479,8 @@ LoginExample is a practical backend engineering project intended to strengthen s
 - Software maintenance and version control
 
 The longer-term objective is to improve maintainability, test coverage, and deployment reliability while progressively automating the currently manual release process.
+
+
+## DevOps & CI/CD
+
+[CI/CD Architecture, Automation and Deployment](DevOps/DevOps-CICD-GitHub.md)
